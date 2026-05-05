@@ -1,0 +1,7 @@
+public/logs/logs.txt
+
+public/uploads
+
+node_modules
+
+.env

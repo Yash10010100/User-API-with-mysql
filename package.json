@@ -1,0 +1,32 @@
+{
+  "name": "user-api-with-mysql",
+  "version": "1.0.0",
+  "description": "A user API with MYSQL database",
+  "keywords": [
+    "node.js",
+    "express",
+    "mysql"
+  ],
+  "license": "ISC",
+  "author": "Yash Padhiyar",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "mysql2": "^3.22.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
