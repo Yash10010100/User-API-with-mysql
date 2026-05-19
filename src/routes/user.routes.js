@@ -4,6 +4,7 @@ import {
     deleteUser,
     getAllUsers,
     getAvatarImage,
+    getCurrentUser,
     getProfilePreview,
     getUser,
     login,
@@ -23,7 +24,9 @@ userRouter.route("/register")
     .post(uploadAvatar, validateInput("REGISTER"), createUser)
 
 userRouter.route("/login")
-    .post(upload.none(), validateInput("LOGIN"), login)
+    .post(
+        upload.none(),
+        validateInput("LOGIN"), login)
 
 userRouter.route("/logout")
     .post(verifyJWT, logout)
@@ -32,7 +35,7 @@ userRouter.route("/refresh")
     .get(refreshAccessToken)
 
 userRouter.route("/")
-    .get(getAllUsers)
+    .get(verifyJWT, getCurrentUser)
 
 userRouter.route("/search")
     .get(searchUsers)

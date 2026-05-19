@@ -34,6 +34,8 @@ const upload = multer({
 const uploadAvatar = (req, res, next) => {
     upload.single("avatar")(req, res, (err) => {
         if (err) {
+            console.error(err);
+
             if (err instanceof ApiError) {
                 next(err)
             }

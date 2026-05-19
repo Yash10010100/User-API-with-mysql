@@ -10,8 +10,8 @@ const pool = createPool({
     resetOnRelease: true,
     waitForConnections: true,
     queueLimit: 5,
-    // timezone: "local",
-    dateStrings: ["TIMESTAMP"]
+    timezone: "z",
+    // dateStrings: ["TIMESTAMP"]
 })
 
 const connect = async () => {

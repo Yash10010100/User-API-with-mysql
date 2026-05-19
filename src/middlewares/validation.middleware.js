@@ -6,7 +6,7 @@ const validateInput = (target) => {
             throw new ApiError(400, "Request body is required!")
         }
 
-        const { email, username, password, firstname, lastname, newPassword } = req.body
+        const { email, username, password, firstname, lastname, newPassword, emailOrUsername } = req.body
 
         const avatar = req.file?.filename
         if (avatar) {
@@ -23,11 +23,7 @@ const validateInput = (target) => {
             isValidName(firstname, true)
             isValidName(lastname, true)
         } else if (target === "LOGIN") {
-            if (email?.trim()) {
-                isValidEmail(email, true)
-            } else {
-                isValidUsername(username, true)
-            }
+            isValidEmailOrUsername(emailOrUsername, true)
             isValidPassword(password, true)
         } else if (target === "UPDATE") {
             if (email) isValidEmail(email, false)
@@ -76,6 +72,14 @@ const isValidPassword = (password, required) => {
     }
     else if (!/^[A-Za-z0-9_@#&-]*$/.test(password) || password.length < 8) {
         throw new ApiError(400, "Password is invalid, should be at least 8 characters long and can contain special characters like @,_,#,&,-")
+    }
+}
+
+const isValidEmailOrUsername = (value, required) => {
+    if (required && !value?.trim()) {
+        throw new ApiError(400, "Email or Username is required")
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value) && !/^[A-Za-z0-9_@]*$/.test(value)) {
+        throw new ApiError(400, "Provide value is not a valid email or username")
     }
 }
 

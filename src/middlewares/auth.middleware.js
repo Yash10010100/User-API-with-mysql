@@ -6,7 +6,7 @@ import { decodeJWT } from "../models/User.js"
 const verifyJWT = async (req, res, next) => {
     const authorization = req.headers.authorization
 
-    const token = authorization?.replace("Bearer ", "")
+    const token = req.cookies?.accessToken || authorization?.replace("Bearer ", "")
 
     if (!token) {
         throw new ApiError(401, "Token required!")

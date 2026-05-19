@@ -7,13 +7,12 @@ const errorHandler = (err, req, res, next) => {
         console.error("API ERROR :", err.message);
         res
             .status(err.statuscode)
-            .json(req.body, new ApiResponse(err.statuscode, err.message))
+            .json(req.body, new ApiResponse(err.statuscode, err.message), true, err)
     } else {
         console.error("SERVER ERROR :", err);
 
         res
             .status(500)
-            // .json(req.body, new ApiResponse(500, "Something went wrong, please try again"), true, null, null, err)
             .json(req.body, new ApiResponse(500, "Something went wrong, please try again"), true, err)
     }
 }

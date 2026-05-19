@@ -1,11 +1,27 @@
 import express from "express"
+import { configDotenv } from "dotenv";
+import cors from "cors"
+import cookieParser from "cookie-parser"
 import morgan from "morgan"
 import { logger } from "./middlewares/logger.middleware.js"
 import { userRouter } from "./routes/user.routes.js"
 import { errorHandler } from "./middlewares/error.middleware.js"
 import { ApiResponse } from "./utils/ApiResponse.js"
 
+
+configDotenv({
+    path: "./.env"
+})
+
 const app = express()
+
+app.use(cors({
+    origin: process.env.CORS_ORIGIN,
+    optionsSuccessStatus: 200,
+    credentials: true
+}))
+
+app.use(cookieParser())
 
 app.use(express.json())
 

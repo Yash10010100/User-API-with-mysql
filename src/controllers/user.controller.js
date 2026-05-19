@@ -52,25 +52,21 @@ const createUser = async (req, res) => {
 }
 
 const login = async (req, res) => {
-    const { email, username, password } = req.body
+    const { emailOrUsername, password } = req.body
 
     const [[user], fields] = await query(
-        email ?
-            `SELECT * 
-            FROM users 
-            WHERE email = ?;`
-            :
-            `SELECT *
-            FROM users
-            WHERE username = ?;`,
-        email || username
+
+        `SELECT * 
+        FROM users 
+        WHERE email = ? OR username = ?;`,
+        [emailOrUsername, emailOrUsername]
     )
 
     if (!user) {
         throw new ApiError(404, "User not found!")
     }
 
-    if (!isPasswordCorrect(password, user.password)) {
+    if (!await isPasswordCorrect(password, user.password)) {
         throw new ApiError(400, "Incorrect password!")
     }
 
@@ -79,15 +75,32 @@ const login = async (req, res) => {
     delete user.password
     delete user.refreshToken
 
+    const cookieOptions = {
+        httpOnly: true
+    }
+
     res
         .status(200)
+        .cookie("accessToken", accessToken, { maxAge: Number(process.env.ACCESS_TOKEN_EXPIRY_MS), ...cookieOptions })
+        .cookie("refreshToken", refreshToken, { maxAge: Number(process.env.REFRESH_TOKEN_EXPIRY_MS), ...cookieOptions })
         .json(req.body, new ApiResponse(200, "Login successful", { user, accessToken, refreshToken }))
+}
+
+const getCurrentUser = async (req, res) => {
+    const user = req.user
+
+    delete user.password
+    delete user.refreshToken
+
+    res
+        .status(200)
+        .json(null, new ApiResponse(200, "Logged in user", user))
 }
 
 const refreshAccessToken = async (req, res) => {
     const authorization = req.headers?.authorization
 
-    const token = authorization?.replace("Bearer ", "")
+    const token = req.cookies?.refreshToken || authorization?.replace("Bearer ", "")
 
     const decoded = decodeJWT(token, process.env.REFRESH_TOKEN_SECRET)
 
@@ -110,9 +123,18 @@ const refreshAccessToken = async (req, res) => {
 
     const { accessToken, refreshToken } = await generateTokens(user?.uid)
 
+    const cookieOptions = {
+        httpOnly: true
+    }
+
+    delete user.password
+    delete user.refreshToken
+
     res
         .status(200)
-        .json(null, new ApiResponse(200, "Tokens refreshed", { accessToken, refreshToken }))
+        .cookie("accessToken", accessToken, { maxAge: Number(process.env.ACCESS_TOKEN_EXPIRY_MS), ...cookieOptions })
+        .cookie("refreshToken", refreshToken, { maxAge: Number(process.env.REFRESH_TOKEN_EXPIRY_MS), ...cookieOptions })
+        .json(null, new ApiResponse(200, "Tokens refreshed", { user, accessToken, refreshToken }))
 }
 
 const logout = async (req, res) => {
@@ -121,8 +143,14 @@ const logout = async (req, res) => {
         req.user.uid
     )
 
+    const cookieOptions = {
+        httpOnly: true
+    }
+
     res
         .status(200)
+        .clearCookie("accessToken", { maxAge: Number(process.env.ACCESS_TOKEN_EXPIRY_MS), ...cookieOptions })
+        .clearCookie("refreshToken", { maxAge: Number(process.env.REFRESH_TOKEN_EXPIRY_MS), ...cookieOptions })
         .json(null, new ApiResponse(204, "User logged out"))
 }
 
@@ -171,18 +199,15 @@ const searchUsers = async (req, res) => {
 
     const l = Number(limit) || 10, p = Number(page) || 1, offset = (p - 1) * l
 
-    try {
-        const [[result, [{totalUsers}]], fields] = await query(
-            `CALL search_users_by_key(?, ?, ?);`,
-            [key, l, offset]
-        )
+    const [[result, [{ totalUsers }]], fields] = await query(
+        `CALL search_users_by_key(?, ?, ?);`,
+        [key, l, offset]
+    )
 
-        res
-            .status(200)
-            .json(null, new ApiResponse(200, `Showing ${result.length?offset+1:0} - ${result.length?offset+result.length:0} / ${totalUsers} matched records`, result))
-    } catch (error) {
-        throw new Error(error.message)
-    }
+    res
+        .status(200)
+        .json(null, new ApiResponse(200, `Showing ${result.length ? offset + 1 : 0} - ${result.length ? offset + result.length : 0} out of ${totalUsers} records`, { result, count: totalUsers }))
+
 }
 
 const updatePassword = async (req, res) => {
@@ -216,6 +241,10 @@ const updatePassword = async (req, res) => {
 const updateUser = async (req, res) => {
     const { id } = req.params
     const { email, username, firstname, lastname, avatar } = req.body
+
+    if ([email, username, firstname, lastname, avatar].every(val => !val)) {
+        throw new ApiError(400, "No changes to save")
+    }
 
     if (Number(id) !== req.user?.uid) {
         throw new ApiError(403, "Not enough permission to update other users!")
@@ -262,7 +291,7 @@ const updateUser = async (req, res) => {
 
     res
         .status(200)
-        .json(req.body, new ApiResponse(200, "User details updated"))
+        .json(req.body, new ApiResponse(200, "User details updated", updates))
 }
 
 const deleteUser = async (req, res) => {
@@ -272,15 +301,30 @@ const deleteUser = async (req, res) => {
         throw new ApiError(403, "Not enough permission to delete other users!")
     }
 
+    const [[user]] = await query(
+        "SELECT * FROM users WHERE uid = ?;",
+        id
+    )
+
+    if (!user) {
+        throw new ApiError(404, "User not found!")
+    }
+
     const [result, fields] = await query(
         "DELETE FROM users WHERE uid = ?;",
         id
     )
 
-    await deleteFile(r[0].avatar)
+    await deleteFile(user.avatar)
+
+    const cookieOptions = {
+        httpOnly: true
+    }
 
     res
         .status(200)
+        .clearCookie("accessToken", { maxAge: Number(process.env.ACCESS_TOKEN_EXPIRY_MS), ...cookieOptions })
+        .clearCookie("refreshToken", { maxAge: Number(process.env.REFRESH_TOKEN_EXPIRY_MS), ...cookieOptions })
         .json(null, new ApiResponse(204, "User deleted"))
 }
 
@@ -383,6 +427,7 @@ const getProfilePreview = async (req, res) => {
 export {
     createUser,
     login,
+    getCurrentUser,
     refreshAccessToken,
     logout,
     getUser,
